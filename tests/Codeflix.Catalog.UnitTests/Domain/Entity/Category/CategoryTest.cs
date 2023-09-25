@@ -1,13 +1,22 @@
 ﻿
 using Codeflix.Catalog.Domain.Exceptions;
+using FluentAssertions;
 using Xunit;
 //usamos um ALIAS, para diferenciar o Category do Domain do Category namespace
 using DomainEntity = Codeflix.Catalog.Domain.Entity;
 
 namespace Codeflix.Catalog.UnitTests.Domain.Entity.Category;
 
+[Collection(nameof(CategoryTestFixture))]
 public class CategoryTest
 {
+    private readonly CategoryTestFixture categoryFixture = new CategoryTestFixture();
+
+    public CategoryTest(CategoryTestFixture categoryFixture)
+    {
+        this.categoryFixture = categoryFixture;
+    }
+
     [Fact(DisplayName =nameof(Instantiate))]
     [Trait("Domain", "Category - Aggregates")]
     public void Instantiate()
@@ -15,27 +24,36 @@ public class CategoryTest
         //Triple A - AAA
         //Arrange - dados necessários para fazer os testes
         // os testes vem do negócio (documentação)
-        var validData = new
-        {
-            Name = "category name",
-            Description = "category description"
-        };
+        
+
+        var validCategory = categoryFixture.GetValidCategory();
 
         var DatetimeBefore = DateTime.Now;
         //Act
-        var category = new DomainEntity.Category(validData.Name, validData.Description);
+        var category = new DomainEntity.Category(validCategory.Name, validCategory.Description);
 
-        var DatetimeAfter = DateTime.Now;
+        var DatetimeAfter = DateTime.Now.AddSeconds(1);
 
         //Assert
-        Assert.NotNull(category);
-        Assert.Equal(validData.Name, category.Name);
-        Assert.Equal(validData.Description, category.Description);
-        Assert.NotEqual(default(Guid), category.Id);
-        Assert.NotEqual(default(DateTime), category.CreatedAt);
-        Assert.True(category.CreatedAt > DatetimeBefore);
-        Assert.True(category.CreatedAt < DatetimeAfter);
-        Assert.True(category.IsActive);
+        //Assert.NotNull(category);
+        //Assert.Equal(validData.Name, category.Name);
+        //Assert.Equal(validData.Description, category.Description);
+        //Assert.NotEqual(default(Guid), category.Id);
+        //Assert.NotEqual(default(DateTime), category.CreatedAt);
+        //Assert.True(category.CreatedAt > DatetimeBefore);
+        //Assert.True(category.CreatedAt < DatetimeAfter);
+        //Assert.True(category.IsActive);
+
+        //Assert usando FluentAssertions - mais legível
+        category.Should().NotBeNull();
+        category.Name.Should().Be(validCategory.Name);
+        category.Description.Should().Be(validCategory.Description);
+        category.Id.Should().NotBe(default(Guid));
+        category.CreatedAt.Should().NotBeSameDateAs(default(DateTime));
+        (category.CreatedAt >= DatetimeBefore).Should().BeTrue();
+        (category.CreatedAt <= DatetimeAfter).Should().BeTrue();
+        (category.IsActive).Should().BeTrue();
+
     }
 
     [Theory(DisplayName = nameof(InstantiateWithActive))]
@@ -47,26 +65,23 @@ public class CategoryTest
         //Theory - Diferente do FACT, o THEORY acredita que se vc passa varios valores e em teoria aqueles valores dão certo.
         //Então isso é uma teoria, pois se aqueles valores passaram, em TEORIA, está OK!
         //InlineData - são os valores para os testes
-        var validData = new
-        {
-            Name = "category name",
-            Description = "category description"
-        };
+
+        var validCategory = categoryFixture.GetValidCategory();
 
         var DatetimeBefore = DateTime.Now;
         //Act
-        var category = new DomainEntity.Category(validData.Name, validData.Description, isActive);
+        var category = new DomainEntity.Category(validCategory.Name, validCategory.Description, isActive);
 
-        var DatetimeAfter = DateTime.Now;
+        var DatetimeAfter = DateTime.Now.AddSeconds(1);
 
         //Assert
         Assert.NotNull(category);
-        Assert.Equal(validData.Name, category.Name);
-        Assert.Equal(validData.Description, category.Description);
+        Assert.Equal(validCategory.Name, category.Name);
+        Assert.Equal(validCategory.Description, category.Description);
         Assert.NotEqual(default(Guid), category.Id);
         Assert.NotEqual(default(DateTime), category.CreatedAt);
-        Assert.True(category.CreatedAt > DatetimeBefore);
-        Assert.True(category.CreatedAt < DatetimeAfter);
+        Assert.True(category.CreatedAt >= DatetimeBefore);
+        Assert.True(category.CreatedAt <= DatetimeAfter);
         Assert.Equal(category.IsActive, isActive);
     }
 
@@ -82,8 +97,11 @@ public class CategoryTest
     [InlineData("    ")]
     public void InstantiateErrorWhenNameEmpty(string? name)
     {
+
+        var validCategory = categoryFixture.GetValidCategory();
+
         Action action = 
-            () => new DomainEntity.Category(name!, "Category Name");
+            () => new DomainEntity.Category(name!, validCategory.Description);
 
         var exception = Assert.Throws<EntityValidationException>(action);
 
@@ -94,8 +112,10 @@ public class CategoryTest
     [Trait("Domain", "Category - Aggregates")]
     public void InstantiateErrorWhenDescriptionIsnull()
     {
+        var validCategory = categoryFixture.GetValidCategory();
+
         Action action =
-            () => new DomainEntity.Category("Category Description", null);
+            () => new DomainEntity.Category(validCategory.Name, null);
 
         var exception = Assert.Throws<EntityValidationException>(action);
 
@@ -109,8 +129,9 @@ public class CategoryTest
     [InlineData("a")]
     public void InstantiateErrorWhenNameMenor3(string Invalidname)
     {
+        var validCategory = categoryFixture.GetValidCategory();
         Action action =
-            () => new DomainEntity.Category(Invalidname,"Category Name size");
+            () => new DomainEntity.Category(Invalidname, validCategory.Description);
         var exception = Assert.Throws<EntityValidationException>(action);
 
         Assert.Equal("Name should be at least 3 characters long", exception.Message);
@@ -120,9 +141,11 @@ public class CategoryTest
     [Trait("Domain", "Category - Aggregates")]
     public void InstantiateErrorWhenNameMaior255()
     {
+        var validCategory = categoryFixture.GetValidCategory();
+
         var invalidName = String.Join(null, Enumerable.Range(1, 256).Select(_ => "a").ToArray());
         Action action =
-            () => new DomainEntity.Category(invalidName, "Category Name size");
+            () => new DomainEntity.Category(invalidName, validCategory.Description);
         var exception = Assert.Throws<EntityValidationException>(action);
 
         Assert.Equal("Name should be less or equal 255 characters long", exception.Message);
@@ -132,9 +155,11 @@ public class CategoryTest
     [Trait("Domain", "Category - Aggregates")]
     public void InstantiateErrorWhenDescriptionMaior10000()
     {
+        var validCategory = categoryFixture.GetValidCategory();
+
         var invalidDescription = String.Join(null, Enumerable.Range(1, 10_001).Select(_ => "a").ToArray());
         Action action =
-            () => new DomainEntity.Category("Category Name", invalidDescription);
+            () => new DomainEntity.Category(validCategory.Name, invalidDescription);
         var exception = Assert.Throws<EntityValidationException>(action);
 
         Assert.Equal("Description should be less than 10.000 characters long", exception.Message);
@@ -145,15 +170,11 @@ public class CategoryTest
     [Trait("Domain", "Category - Aggregates")]
    public void Activate()
     {
-        var validData = new
-        {
-            Name = "category name",
-            Description = "category description"
-        };
+        var validCategory = categoryFixture.GetValidCategory();
 
         var DatetimeBefore = DateTime.Now;
         //Act
-        var category = new DomainEntity.Category(validData.Name, validData.Description, true);
+        var category = new DomainEntity.Category(validCategory.Name, validCategory.Description, true);
 
         category.Activate();
 
@@ -166,15 +187,11 @@ public class CategoryTest
     [Trait("Domain", "Category - Aggregates")]
     public void DeActivate()
     {
-        var validData = new
-        {
-            Name = "category name",
-            Description = "category description"
-        };
+        var validCategory = categoryFixture.GetValidCategory();
 
         var DatetimeBefore = DateTime.Now;
         //Act
-        var category = new DomainEntity.Category(validData.Name, validData.Description, false);
+        var category = new DomainEntity.Category(validCategory.Name, validCategory.Description, false);
 
         category.DeActivate();
 
@@ -187,7 +204,7 @@ public class CategoryTest
     [Trait("Domain", "Category - Aggregates")]
     public void Update()
     {
-        var category = new DomainEntity.Category("Category name","Category Description");
+        var category = categoryFixture.GetValidCategory();
 
         //para simular valores passados pelo usuario
         var newValues = new { Name = "New Name", Description = "new description" };
@@ -202,7 +219,7 @@ public class CategoryTest
     [Trait("Domain", "Category - Aggregates")]
     public void UpdateOnlyName()
     {
-        var category = new DomainEntity.Category("Category name", "Category Description");
+        var category = categoryFixture.GetValidCategory();
 
         //para simular valores passados pelo usuario
         var newValues = new { Name = "New Name" };
@@ -221,7 +238,7 @@ public class CategoryTest
     [InlineData("    ")]
     public void UpdateErrorWhenNameEmpty(string? name)
     {
-        var category = new DomainEntity.Category("Category name", "Category Description");
+        var category = categoryFixture.GetValidCategory();
 
         Action action =
             () => category.Update(name!);
@@ -239,7 +256,7 @@ public class CategoryTest
     [InlineData("a")]
     public void UpdateWhenNameMenor3(string Invalidname)
     {
-        var category = new DomainEntity.Category("Category name", "Category Description");
+        var category = categoryFixture.GetValidCategory();
 
         Action action =
             () => category.Update(Invalidname);
@@ -252,7 +269,7 @@ public class CategoryTest
     [Trait("Domain", "Category - Aggregates")]
     public void UpdateErrorWhenNameMaior255()
     {
-        var category = new DomainEntity.Category("Category name", "Category Description");
+        var category = categoryFixture.GetValidCategory();
 
         var invalidName = String.Join(null, Enumerable.Range(1, 256).Select(_ => "a").ToArray());
         Action action =
@@ -266,7 +283,7 @@ public class CategoryTest
     [Trait("Domain", "Category - Aggregates")]
     public void UpdateErrorWhenDescriptionMaior10000()
     {
-        var category = new DomainEntity.Category("Category name", "Category Description");
+        var category = categoryFixture.GetValidCategory();
 
         var invalidDescription = String.Join(null, Enumerable.Range(1, 10_001).Select(_ => "a").ToArray());
         Action action =

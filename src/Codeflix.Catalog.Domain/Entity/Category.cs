@@ -1,19 +1,22 @@
 ﻿using Codeflix.Catalog.Domain.Exceptions;
+using Codeflix.Catalog.Domain.SeedWork;
 using System.Data;
 
 namespace Codeflix.Catalog.Domain.Entity;
 
-public class Category
+public class Category: AggregateRoot
 {
-    public Guid Id { get; private set; }
+    //não preciso do Guid aqui, pois ela vai herdar de Aggregate, que herda de Entity
+    //public Guid Id { get; private set; }
     public string Name { get; private set; }
     public string Description { get; private set; }
     public bool IsActive { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    public Category(string name, string description, bool isActive = true)
+    public Category(string name, string description, bool isActive = true): base()
     {
-        Id = Guid.NewGuid();
+        // já coloquei o base(), então o ID já vai estar sendo gerado no Entity
+        //Id = Guid.NewGuid();
         Name = name;
         Description = description;
         IsActive = isActive;
