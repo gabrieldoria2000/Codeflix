@@ -124,9 +124,7 @@ public class CategoryTest
 
     [Theory(DisplayName = nameof(InstantiateErrorWhenNameMenor3))]
     [Trait("Domain", "Category - Aggregates")]
-    [InlineData("1")]
-    [InlineData("12")]
-    [InlineData("a")]
+    [MemberData(nameof(GetNamesWithLessThan3caracters), parameters: 10)]
     public void InstantiateErrorWhenNameMenor3(string Invalidname)
     {
         var validCategory = categoryFixture.GetValidCategory();
@@ -135,6 +133,27 @@ public class CategoryTest
         var exception = Assert.Throws<EntityValidationException>(action);
 
         Assert.Equal("Name should be at least 3 characters long", exception.Message);
+    }
+
+    public static IEnumerable<object[]> GetNamesWithLessThan3caracters(int numberOfTests =6)
+    {
+        var fixture = new CategoryTestFixture();
+
+        for (int i = 0; i < numberOfTests; i++)
+        {
+            var isOdd = i % 2 == 1;
+            yield return new object[]
+            {
+                fixture.GetValidCategoryName().Substring(0, isOdd? 1: 2)
+            };
+        }
+
+        //o YIELD faz um retorno a cada interação
+        //yield return new object[] { "1" };
+        //yield return new object[] { "12" };
+        //yield return new object[] { "aa" };
+        //yield return new object[] { "a" };
+        //yield return new object[] { "ju" };
     }
 
     [Fact(DisplayName = nameof(InstantiateErrorWhenNameMaior255))]
@@ -205,14 +224,12 @@ public class CategoryTest
     public void Update()
     {
         var category = categoryFixture.GetValidCategory();
+        var Newcategory = categoryFixture.GetValidCategory();
 
-        //para simular valores passados pelo usuario
-        var newValues = new { Name = "New Name", Description = "new description" };
+        category.Update(Newcategory.Name, Newcategory.Description);
 
-        category.Update(newValues.Name, newValues.Description);
-
-        Assert.Equal(newValues.Name, category.Name);
-        Assert.Equal(newValues.Description, category.Description);
+        Assert.Equal(Newcategory.Name, category.Name);
+        Assert.Equal(Newcategory.Description, category.Description);
     }
 
     [Fact(DisplayName = nameof(UpdateOnlyName))]
@@ -222,12 +239,13 @@ public class CategoryTest
         var category = categoryFixture.GetValidCategory();
 
         //para simular valores passados pelo usuario
-        var newValues = new { Name = "New Name" };
+        var newName = categoryFixture.GetValidCategoryName();
+
         var currentDescription = category.Description;
 
-        category.Update(newValues.Name);
+        category.Update(newName);
 
-        Assert.Equal(newValues.Name, category.Name);
+        Assert.Equal(newName, category.Name);
         Assert.Equal(currentDescription, category.Description);
     }
 
@@ -271,7 +289,10 @@ public class CategoryTest
     {
         var category = categoryFixture.GetValidCategory();
 
-        var invalidName = String.Join(null, Enumerable.Range(1, 256).Select(_ => "a").ToArray());
+        //var invalidName = String.Join(null, Enumerable.Range(1, 256).Select(_ => "a").ToArray());
+
+        var invalidName = categoryFixture.faker.Lorem.Letter(256);
+
         Action action =
             () => category.Update(invalidName);
         var exception = Assert.Throws<EntityValidationException>(action);
@@ -285,7 +306,14 @@ public class CategoryTest
     {
         var category = categoryFixture.GetValidCategory();
 
-        var invalidDescription = String.Join(null, Enumerable.Range(1, 10_001).Select(_ => "a").ToArray());
+        //var invalidDescription = String.Join(null, Enumerable.Range(1, 10_001).Select(_ => "a").ToArray());
+
+
+        //vai concatenando até passar de 10.000 caracteres
+        var invalidDescription = categoryFixture.faker.Commerce.ProductDescription();
+        while (invalidDescription.Length <= 10_000)
+            invalidDescription = $"{invalidDescription} {categoryFixture.faker.Commerce.ProductDescription()}";
+
         Action action =
             () => category.Update("Category Name", invalidDescription);
         var exception = Assert.Throws<EntityValidationException>(action);
